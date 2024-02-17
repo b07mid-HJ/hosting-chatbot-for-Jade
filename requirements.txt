@@ -2,8 +2,7 @@ langchain-google-genai
 langchain-core
 streamlit
 Chroma
-chromadb
+chromadb==0.3.29
 google-generativeai
 langchain
 langchain-core
-pysqlite3==0.4.6
