@@ -6,3 +6,4 @@ chromadb
 google-generativeai
 langchain
 langchain-core
+pysqlite3==0.4.6
