@@ -25,7 +25,7 @@ if __name__ == "__main__":
                                 )
         
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-    vectorstore = Chroma(persist_directory=r"C:\Users\Bohmid\Desktop\hosting chatbot\db",embedding_function=GoogleGenerativeAIEmbeddings(model="models/embedding-001"))
+    vectorstore = Chroma(persist_directory=".\db",embedding_function=GoogleGenerativeAIEmbeddings(model="models/embedding-001"))
     
 
     metadata_field_info = [
