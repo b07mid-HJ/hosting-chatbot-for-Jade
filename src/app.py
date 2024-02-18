@@ -9,6 +9,12 @@ from langchain.retrievers.self_query.base import SelfQueryRetriever
 from langchain.retrievers import EnsembleRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+import pinecone
+from langchain.vectorstores import pinecone
+
+os.environ["PINECONE_API_KEY"]="1de088f9-831d-4a95-9a8a-ea7c0bd2bd2e"
+os.environ["PINECONE_ENV"]="gcp-starter"
+
 
 if "history" not in st.session_state:
     st.session_state.history = []
@@ -25,8 +31,7 @@ if __name__ == "__main__":
                                 )
         
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-    vectorstore = Chroma(persist_directory=".\db",embedding_function=GoogleGenerativeAIEmbeddings(model="models/embedding-001"))
-    
+    vectorstore = pinecone.Pinecone.from_existing_index(index_name="jade-chat", embedding = GoogleGenerativeAIEmbeddings(model="models/embedding-001"))
 
     metadata_field_info = [
     AttributeInfo(

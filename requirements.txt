@@ -2,7 +2,7 @@ langchain-google-genai
 langchain-core
 streamlit
 Chroma
-chromadb==0.3.29
+chromadb
 google-generativeai
 langchain
 langchain-core
