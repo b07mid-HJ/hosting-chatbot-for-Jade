@@ -7,3 +7,4 @@ google-generativeai
 langchain
 langchain-core
 lark
+pinecone-client
