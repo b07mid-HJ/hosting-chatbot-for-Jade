@@ -38,7 +38,7 @@ def main():
     docx_file_path = "./recursive/rep.docx"
     
     # Path to the output text file
-    output_file_path = "./recursive/output.txt"
+    output_file_path = "./remove intro docs/output.txt"
     
     # Extract text from the .docx file
     extracted_text = extract_text_from_docx(docx_file_path)

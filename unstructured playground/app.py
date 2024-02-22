@@ -28,52 +28,65 @@ model = ChatGoogleGenerativeAI(
     
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 
-# Table Indexing/Retrieval
-# Get elements
-raw_tables = partition_docx(
-    filename="./multi+parent/rep.docx",
-    infer_table_structure=True,
-)
-# Create a dictionary to store counts of each type
-category_counts = {}
+from docx import Document as dc
 
-for element in raw_tables:
-    category = str(type(element))
-    if category in category_counts:
-        category_counts[category] += 1
-    else:
-        category_counts[category] = 1
+from xml.etree.ElementTree import Element, SubElement, tostring
 
-# Unique_categories will have unique elements
-unique_categories = set(category_counts.keys())
-print(unique_categories)
+def table_to_xml(table):
+    root = Element('table')
+    for row in table:
+        row_element = SubElement(root, 'row')
+        for cell in row:
+            cell_element = SubElement(row_element, 'cell')
+            cell_element.text = cell
+    return root
 
-class Element(BaseModel):
-    type: str
-    text: Any
+def extract_tables_from_docx(docx_file):
+    doc = dc(docx_file)
+    langchain_documents = []
+    table_captions = []
 
+    # Extract all captions from the document
+    for p in doc.paragraphs:
+        if p.style.name.startswith('Caption'):
+            table_captions.append(p.text.strip())
 
-# Categorize by type
-categorized_elements = []
-for element in raw_tables:
-    if "unstructured.documents.elements.Table" in str(type(element)):
-        categorized_elements.append(Element(type="table", text=str(element)))
-    elif "unstructured.documents.elements.CompositeElement" in str(type(element)):
-        categorized_elements.append(Element(type="text", text=str(element)))
+    # Iterate through tables and their captions
+    for caption, table in zip(table_captions, doc.tables):
+        content = []
 
-# Tables
-table_elements = [e for e in categorized_elements if e.type == "table"]
-print(len(table_elements))
+        # Extracting content of the table
+        for row in table.rows:
+            row_content = [cell.text.strip() for cell in row.cells]
+            content.append(row_content)
+
+        # Convert table content to XML format
+        xml_content = table_to_xml(content)
+
+        # Creating langchain document with metadata as title and content as table
+        langchain_document = "Title: "+ caption + "Content: " + tostring(xml_content, encoding='unicode')
+        
+        langchain_documents.append(langchain_document)
+
+    return langchain_documents
+
+# Example usage:
+docx_file_path = "./multi+parent/rep.docx"  # Path to your .docx file
+table_elements = extract_tables_from_docx(docx_file_path)
+
 
 # Prompt
-prompt_text = """You are an assistant tasked with summarizing tables, when summarizing a table you should keep all the numerical values for it and don't draw conclutions. \ 
+prompt_text = """You are an assistant tasked with summarizing tables.\ 
+Summerize it and keep the most important information.
+Also you must put the title at the beginning of the summary. \
+If you encounter any table name that has Sc. that means it's a senario \
 Give a summary of the table. Table chunk: {element} """
 prompt = ChatPromptTemplate.from_template(prompt_text)
 
 # Summary chain
 summarize_chain = {"element": lambda x: x} | prompt | model | StrOutputParser()
 
-tables = [i.text for i in table_elements]
+tables = table_elements
 table_summaries = summarize_chain.batch(tables, {"max_concurrency": 5})
 
 # Apply to tables
@@ -161,7 +174,7 @@ Question: {question}
 """
 prompt = ChatPromptTemplate.from_template(template)
 from langchain.retrievers import EnsembleRetriever
-ensemble=EnsembleRetriever(retrievers=[retriever1,retriever2],weights=[0.5,0.5])
+ensemble=EnsembleRetriever(retrievers=[retriever1,retriever2],weights=[0.65,0.35])
 # RAG pipeline
 chain = (
     {"context": ensemble, "question": RunnablePassthrough()}
@@ -177,11 +190,5 @@ while True:
 
     print(f"Question: {question}")
     result = chain.invoke(question)
-    print(f"Answer (ensemble): {ensemble.invoke(question)}")
-    print("-------------------------")
-    print(f"Answer (retriever): {retriever1.invoke(question)}")
-    print("-------------------------")
-    print(f"Answer (vectorstore2): {retriever2.invoke(question)}")
-    print("-------------------------")
-    print(f"Context: {result}")
+    print(f"Answer: {result}")
     print("=========================")
