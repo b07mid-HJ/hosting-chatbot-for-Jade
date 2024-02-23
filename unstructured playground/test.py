@@ -1,56 +1,51 @@
 from docx import Document
-from xml.etree.ElementTree import Element, SubElement, tostring
+from docx.text.paragraph import Paragraph
+from docx.document import Document
+from docx.table import _Cell, Table
+from docx.oxml.text.paragraph import CT_P
+from docx.oxml.table import CT_Tbl
+import docx
 
-def table_to_xml(table):
-    root = Element('table')
-    for row in table:
-        row_element = SubElement(root, 'row')
-        for cell in row:
-            cell_element = SubElement(row_element, 'cell')
-            cell_element.text = cell
-    return root
+def iter_block_items(parent):
+    if isinstance(parent, Document):
+        parent_elm = parent.element.body
+    elif isinstance(parent, _Cell):
+        parent_elm = parent._tc
+    else:
+        raise ValueError("something's not right")
 
-def extract_tables_from_docx(docx_file):
-    doc = Document(docx_file)
-    langchain_documents = []
-
-    for table in doc.tables:
-        # Find the index of the current table within all tables in the document
-        table_index = 0
-        for i, t in enumerate(doc.tables):
-            if t is table:
-                table_index = i
-                break
-
-        # Find the caption (the paragraph just before the table)
-        if table_index > 0:
-            caption_paragraph = doc.paragraphs[table_index - 1]
-            caption = caption_paragraph.text.strip()
-
-            # Extracting content of the table
-            content = []
+    for child in parent_elm.iterchildren():
+        if isinstance(child, CT_P):
+            yield Paragraph(child, parent)
+        elif isinstance(child, CT_Tbl):
+            table = Table(child, parent)
             for row in table.rows:
-                row_content = [cell.text.strip() for cell in row.cells]
-                content.append(row_content)
+                for cell in row.cells:
+                    yield from iter_block_items(cell)
 
-            # Convert table content to XML format
-            xml_content = table_to_xml(content)
+def find_tables_with_titles(docx_file):
+    document = docx.Document(docx_file)
+    tables_with_titles = []
+    document_elements = list(iter_block_items(document))
 
-            # Creating langchain document with metadata as title and content as table
-            langchain_document = {
-                "metadata": {"title": caption},
-                "content": tostring(xml_content, encoding='unicode')
-            }
-            langchain_documents.append(langchain_document)
+    for i, block_item in enumerate(document_elements):
+        if isinstance(block_item, Paragraph) and block_item.style.name == 'Caption':
+            print(block_item.text)
+            for next_block_item in document_elements[i+1:]:
+                if isinstance(next_block_item, Table):
+                    print(next_block_item)
+                    tables_with_titles.append((block_item.text, next_block_item))
+                    break
 
-    return langchain_documents
+    return tables_with_titles
 
-
-# Example usage:
-docx_file_path = "./multi+parent/rep.docx"  # Path to your .docx file
-langchain_docs = extract_tables_from_docx(docx_file_path)
-for doc in langchain_docs:
-    print("Title:", doc["metadata"]["title"])
-    print("Content (XML format):")
-    print(doc["content"])
-    print()
+docx_file_path = "./multi+parent/rep.docx"  # Replace with your .docx file path
+tables_with_titles = find_tables_with_titles(docx_file_path)
+for title, table in tables_with_titles:
+    print("Title:", title)
+    for row in table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                print(paragraph.text)
+        print()
+    print("=" * 20)
