@@ -13,6 +13,7 @@ from langchain.retrievers.multi_vector import MultiVectorRetriever
 from langchain_core.documents import Document as dc
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import streamlit as st
+from langchain_community.vectorstores import Milvus
 
 #model preperation
 os.environ["GOOGLE_API_KEY"]="AIzaSyBR03q5DwkuBxfeCCja-b-j1hGeI0NRIGE"
@@ -93,7 +94,8 @@ with st.spinner('🚀 Starting your bot.  This might take a while'):
         #             print(f"An error occurred: {e}")
 
         # The vectorstore to use to index the child chunks
-        vectorstore1 = Chroma(collection_name="table_summaries", embedding_function=GoogleGenerativeAIEmbeddings(model="models/embedding-001"))
+        #vectorstore1 = Chroma(collection_name="table_summaries", embedding_function=GoogleGenerativeAIEmbeddings(model="models/embedding-001"))
+        vectorstore1 = Milvus(embedding_function = GoogleGenerativeAIEmbeddings(model="models/embedding-001"),connection_args={"host": "127.0.0.1", "port": "19530"},collection_name="table_summaries")
 
         # The storage layer for the parent documents
         store1 = InMemoryStore()
@@ -130,7 +132,8 @@ with st.spinner('🚀 Starting your bot.  This might take a while'):
         )
 
         texts = text_splitter.create_documents([state_of_the_union])
-        vectorstore2 = Chroma(collection_name="child_chunks", embedding_function=GoogleGenerativeAIEmbeddings(model="models/embedding-001"))
+        #vectorstore2 = Chroma(collection_name="child_chunks", embedding_function=GoogleGenerativeAIEmbeddings(model="models/embedding-001"))
+        vectorstore2 = Milvus(embedding_function = GoogleGenerativeAIEmbeddings(model="models/embedding-001"),connection_args={"host": "127.0.0.1", "port": "19530"},collection_name="child_chunks")
 
         # The storage layer for the parent documents
         store2 = InMemoryStore()
